@@ -18,7 +18,7 @@
 		print(`These tests will take some minutes to complete. Once it is done, you will see a finish message.`);
 
 		const MB = 1000 * 1000;
-		const fileSizes = [ 1 * MB, 5 * MB, 10 * MB, 20 * MB ];
+		const fileSizes = [ 1 * MB, 5 * MB, 10 * MB, 20 * MB, 50 * MB ];
 		const buffers = fileSizes.map(size => new Blob(["0".repeat(size)]));
 		const concurrencies = [ 1, 2, 3, 4 ];
 		const takes = [ 1, 2 ];
@@ -78,7 +78,7 @@
 			}
 
 			const upload = new tus.Upload(buffer, {
-				endpoint: "https://master.tus.io/files/",
+				endpoint: "https://pilsen.transloadit.com/resumable/files/",
 				addRequestId: true,
 				retryDelays: [0, 1000, 3000, 5000],
 				parallelUploads: concurrency,
