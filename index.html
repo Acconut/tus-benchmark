@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>tus benchmark tool</title>
+</head>
+<body>
+	<pre id="output"></pre>
+	<script src="../../dist/tus.js"></script>
+	<script>
+		const version = "2020-04-27"
+		const output = document.getElementById("output");
+		function print(message) {
+			output.textContent += message + "\n"
+		}
+
+		print(`Starting tus benchmark (version ${version}) at ${new Date().toString()}`)
+		print(`These tests will take some minutes to complete. Once it is done, you will see a finish message.`);
+
+		const MB = 1000 * 1000;
+		const fileSizes = [ 1 * MB, 5 * MB, 10 * MB, 20 * MB ];
+		const buffers = fileSizes.map(size => new Blob(["0".repeat(size)]));
+		const concurrencies = [ 1, 2, 3, 4 ];
+		const takes = [ 1, 2 ];
+
+		const queue = [];
+		const results = [];
+
+		takes.forEach(take => {
+			buffers.forEach(buffer => {
+				concurrencies.forEach(concurrency => {
+					queue.push({
+						take, buffer, concurrency
+					})
+				})
+			})
+		})
+
+		// Randomize queue
+		shuffle(queue);
+
+		const totalTransfer = fileSizes.reduce((a, b) => a+b) * concurrencies.length * takes.length;
+
+		print(`Running ${queue.length} uploads in total.`);
+		print(`This will upload about ${totalTransfer / MB}MB of data.`);
+
+		function runUpload() {
+			if (queue.length === 0) {
+				print(``);
+				print(JSON.stringify(results, null, 2));
+				print(``);
+				print(`All uploads are done! Please send this page to Marius! Thank you very much <3`);
+				return;
+			}
+
+			const { take, buffer, concurrency } = queue.shift();
+			const fileSize = buffer.size / MB;
+			const startTime = Date.now();
+
+			print(`Starting upload (take: ${take}, file size: ${fileSize}, concurrency: ${concurrency})...`);
+
+			const callback = (error = null) => {
+				const duration = (Date.now() - startTime) / 1000;
+				const uploadUrl = upload.url;
+
+				const result = {
+					take,
+					concurrency,
+					fileSize,
+					duration,
+					uploadUrl,
+					error
+				}
+				results.push(result);
+				print(`Completeded upload: ${JSON.stringify(result, null, 2)}`);
+
+				setTimeout(runUpload, 1000);
+			}
+
+			const upload = new tus.Upload(buffer, {
+				endpoint: "https://master.tus.io/files/",
+				addRequestId: true,
+				retryDelays: [0, 1000, 3000, 5000],
+				parallelUploads: concurrency,
+				storeFingerprintForResuming: false,
+				onSuccess: callback,
+				onError: callback,
+			});
+
+			upload.start();
+		}
+
+		runUpload();
+
+		// Thanks to https://stackoverflow.com/a/2450976
+		function shuffle(array) {
+			var currentIndex = array.length, temporaryValue, randomIndex;
+
+			// While there remain elements to shuffle...
+			while (0 !== currentIndex) {
+
+			// Pick a remaining element...
+			randomIndex = Math.floor(Math.random() * currentIndex);
+			currentIndex -= 1;
+
+			// And swap it with the current element.
+			temporaryValue = array[currentIndex];
+				array[currentIndex] = array[randomIndex];
+				array[randomIndex] = temporaryValue;
+			}
+		}
+	</script>
+</body>
+</html>
